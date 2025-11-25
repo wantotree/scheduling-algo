@@ -1,86 +1,78 @@
-# Non-Preemptive SJF Scheduling (with forced user input)
+# SJF Scheduling - Non-Preemptive, Fixed IDs & Arrival, Box-Style Gantt
 
-def get_int(prompt):
-    """Force user to enter a valid integer."""
+def get_int(msg):
     while True:
         try:
-            return int(input(prompt))
-        except ValueError:
-            print("Invalid input! Please enter a NUMBER.")
+            val = int(input(msg))
+            if val > 0:
+                return val
+            print("Please enter a positive number!")
+        except:
+            print("Please enter a valid number.")
 
-def get_pid(prompt):
-    """Force user to enter a non-empty process ID."""
-    while True:
-        pid = input(prompt).strip()
-        if pid != "":
-            return pid
-        print("Process ID cannot be empty!")
-
-def sjf(processes):
+def sjf_fixed(processes):
     n = len(processes)
-    p = [{"pid":pid, "arr":arr, "burst":burst, "done":False, "finish":0}
-         for pid, arr, burst in processes]
+    for p in processes:
+        p["done"] = False
+        p["finish"] = 0
 
-    time = min(x["arr"] for x in p)
+    time = 0
     gantt = []
-    finished = 0
 
-    while finished < n:
-        ready = [x for x in p if not x["done"] and x["arr"] <= time]
-
+    completed = 0
+    while completed < n:
+        ready = [p for p in processes if p["arr"] <= time and not p["done"]]
         if not ready:
-            time = min(x["arr"] for x in p if not x["done"])
+            gantt.append(" ")  # idle
+            time += 1
             continue
 
         ready.sort(key=lambda x: (x["burst"], x["arr"]))
         cur = ready[0]
 
-        start = time
-        time += cur["burst"]
+        # Non-preemptive: execute fully
+        for _ in range(cur["burst"]):
+            gantt.append(cur["pid"])
+            time += 1
+
         cur["finish"] = time
         cur["done"] = True
-        gantt.append((cur["pid"], start, time))
-        finished += 1
+        completed += 1
 
-    # Gantt chart
-    print("\nGANTT CHART:")
-    cur = gantt[0][1]
-    print(cur, end=" ")
-    for pid, s, e in gantt:
-        print(f"[ {pid} ] {e}", end=" ")
-    print("\n")
+    # Box-style Gantt chart
+    print("\nGANTT CHART (Box Style):")
+    print("+" + "---+"*len(gantt))
+    for pid in gantt:
+        print(f"|{pid:^3}", end="")
+    print("|")
+    print("+" + "---+"*len(gantt))
+    print(" ".join(f"{i:^3}" for i in range(len(gantt))))
 
     # Table
-    print(f"{'Process':<10}{'Arrival':>10}{'Burst':>10}"
-          f"{'Turnaround':>15}{'Waiting':>12}")
-
+    print(f"\n{'Process':<10}{'Arrival':>8}{'Burst':>8}{'Turnaround':>12}{'Waiting':>10}")
     total_tat = total_wt = 0
-
-    for x in p:
-        tat = x["finish"] - x["arr"]
-        wt = tat - x["burst"]
+    for p in processes:
+        tat = p["finish"] - p["arr"]
+        wt = tat - p["burst"]
         total_tat += tat
         total_wt += wt
-        print(f"{x['pid']:<10}{x['arr']:>10}{x['burst']:>10}"
-              f"{tat:>15}{wt:>12}")
+        print(f"{p['pid']:<10}{p['arr']:8}{p['burst']:8}{tat:12}{wt:10}")
 
     print(f"\nAverage Turnaround Time = {total_tat/n:.2f}")
-    print(f"Average Waiting Time = {total_wt/n:.2f}\n")
+    print(f"Average Waiting Time   = {total_wt/n:.2f}\n")
 
+# -----------------------
+# User chooses number of processes
+# -----------------------
+print("=== Non-Preemptive SJF Scheduling ===")
+num_proc = get_int("Enter number of processes (max 26): ")
 
-# ------------------------
-#      INPUT SECTION
-# ------------------------
-
-print("=== SJF Scheduling ===")
-n = get_int("Enter number of processes: ")
-
+# Fixed process IDs (P1, P2, ...) and arrival times 0,1,2,...
 processes = []
-for i in range(n):
-    print(f"\nProcess {i+1}:")
-    pid = get_pid("  Process ID: ")
-    arr = get_int("  Arrival Time: ")
-    burst = get_int("  Burst Time: ")
-    processes.append((pid, arr, burst))
+for i in range(num_proc):
+    pid = f"P{i+1}"
+    arr = i  # arrival times 0,1,2,...
+    burst = get_int(f"Enter Burst Time for {pid}: ")
+    processes.append({"pid":pid, "arr":arr, "burst":burst})
 
-sjf(processes)
+sjf_fixed(processes)
